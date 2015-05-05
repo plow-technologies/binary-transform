@@ -3,10 +3,11 @@ machine:
     version: 7.8.3
 
   environment:
-    PATH: $HOME/.cabal-sandbox/bin:$PATH
+    PATH: $HOME/$CIRCLE_PROJECT_REPONAME/.cabal-sandbox/bin:$PATH
 
 dependencies:
   override:
+    - echo $PATH
     - wget https://raw.githubusercontent.com/Daniel-Diaz/personal-shell-scripts/master/circlecighc710.sh
     - sh circlecighc710.sh
     - cabal update
