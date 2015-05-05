@@ -7,7 +7,6 @@ machine:
 
 dependencies:
   override:
-    - echo $PATH
     - wget https://raw.githubusercontent.com/Daniel-Diaz/personal-shell-scripts/master/circlecighc710.sh
     - sh circlecighc710.sh
     - cabal update
