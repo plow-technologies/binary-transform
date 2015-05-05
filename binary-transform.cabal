@@ -1,7 +1,6 @@
 name:                binary-transform
 version:             0.1.0.0
 synopsis:            Implementation of the binary transform.
--- description:         
 license:             BSD3
 license-file:        LICENSE
 author:              Daniel Díaz
@@ -15,4 +14,4 @@ library
   build-depends:       base == 4.*
                ,       binary-list >= 0.3
   default-language:    Haskell2010
-  ghc-options:         -Wall
+  ghc-options:         -Wall -O2
