@@ -2,6 +2,9 @@ machine:
   ghc:
     version: 7.8.3
 
+  environment:
+    PATH: $HOME/.cabal-sandbox/bin:$PATH
+
 dependencies:
   override:
     - wget https://raw.githubusercontent.com/Daniel-Diaz/personal-shell-scripts/master/circlecighc710.sh
@@ -21,5 +24,4 @@ deployment:
     commands:
       - git clone git@github.com:plow-technologies/plow-scripts.git
       - cabal install neil
-      - cp .cabal-sandbox/bin/neil ~/.cabal/bin/neil
       - sh plow-scripts/hackage.sh
