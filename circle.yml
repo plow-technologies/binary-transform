@@ -1,9 +1,11 @@
 machine:
   ghc:
-    version: 7.10.1
+    version: 7.8.3
 
 dependencies:
   override:
+    - wget https://raw.githubusercontent.com/Daniel-Diaz/personal-shell-scripts/master/circlecighc710.sh
+    - sh circlecighc710.sh
     - cabal update
     - cabal sandbox init
     - cabal install --only-dependencies --force-reinstalls -j2
