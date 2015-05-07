@@ -45,20 +45,20 @@ data Bijection a b =
             , inverse :: b -> a -- ^ Inverse of the bijection.
               }
 
-{-# INLINE inverseBijection #-}
 
 -- | The inverse of a bijection.
 inverseBijection :: Bijection a b -> Bijection b a
+{-# INLINE inverseBijection #-}
 inverseBijection (Bijection f f') = Bijection f' f
 
 ---------------------------------
 ---------------------------------
 -- Bijections on functors
 
-{-# INLINE functorBijection #-}
 
 -- | Lift a 'Bijection' to work over an arbitrary 'Functor'.
 functorBijection :: Functor f => Bijection a b -> Bijection (f a) (f b)
+{-# INLINE functorBijection #-}
 functorBijection (Bijection f f') = Bijection (fmap f) (fmap f')
 
 {-
