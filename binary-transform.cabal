@@ -1,5 +1,5 @@
 name:                binary-transform
-version:             0.1.0.3
+version:             0.1.1.0
 synopsis:            Implementation of the binary transform.
 license:             BSD3
 license-file:        LICENSE
