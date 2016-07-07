@@ -1,4 +1,6 @@
 
+{-# LANGUAGE ScopedTypeVariables #-}
+
 -- | Implementation of the binary transform, as detailed in
 --   <https://github.com/plow-technologies/writings/tree/master/binary-transform>.
 module Data.BinaryList.Algorithm.BinaryTransform (
@@ -10,6 +12,7 @@ module Data.BinaryList.Algorithm.BinaryTransform (
     -- * Binary Transform
     -- ** Left version
   , leftBinaryTransform
+  , leftBinaryTransformVector
   , leftInverseBinaryTransformDec
   , leftPartialInverse
     -- ** Right version
@@ -21,11 +24,15 @@ module Data.BinaryList.Algorithm.BinaryTransform (
 import Prelude hiding (id,(.))
 import Control.Category
 import Control.Arrow ((***))
-import Data.Maybe (fromJust)
+import Control.Monad (forM_)
 -- Binary lists
 import Data.BinaryList (BinList)
 import qualified Data.BinaryList as BL
 import Data.BinaryList.Serialize (Decoded (..))
+-- Vectors
+import Data.Vector (Vector)
+import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as MV
 
 -- | A bijection from @a@ to @b@ is a function from @a@ to @b@ that is invertible.
 --   A function is invertible if and only if it's both injective and surjective.
@@ -45,7 +52,6 @@ data Bijection a b =
             , inverse :: b -> a -- ^ Inverse of the bijection.
               }
 
-
 -- | The inverse of a bijection.
 inverseBijection :: Bijection a b -> Bijection b a
 {-# INLINE inverseBijection #-}
@@ -54,7 +60,6 @@ inverseBijection (Bijection f f') = Bijection f' f
 ---------------------------------
 ---------------------------------
 -- Bijections on functors
-
 
 -- | Lift a 'Bijection' to work over an arbitrary 'Functor'.
 functorBijection :: Functor f => Bijection a b -> Bijection (f a) (f b)
@@ -129,10 +134,9 @@ Therefore, @g :: c a -> c b@ is a bijection. Its inverse is @g' = fmap f'@. Inde
 ---------------------------------
 -- Product Bijection
 
-{-# INLINE productBijection #-}
-
 -- | The product of two bijections. This is the equivalent to '***' for the 'Bijection' type.
 productBijection :: Bijection a b -> Bijection c d -> Bijection (a,c) (b,d)
+{-# INLINE productBijection #-}
 productBijection (Bijection f f') (Bijection g g') = Bijection (f *** g) (f' *** g')
 
 {-
@@ -211,7 +215,9 @@ Therefore, @h :: (a,c) -> (b,d)@ is a bijection. Its inverse is
 ---------------------------------
 
 instance Category Bijection where
+  {-# INLINE id #-}
   id = Bijection id id
+  {-# INLINE (.) #-}
   Bijection f f' . Bijection g g' = Bijection (f . g) (g' . f')
 
 -- Left Binary Transform
@@ -224,25 +230,61 @@ leftBinaryTransform (Bijection f f') = Bijection transform itransform
    where
      transform xs =
        case BL.disjoinPairs xs of
-         Nothing -> xs
-         Just ps -> let (l,r) = BL.unzip $ fmap f ps
-                    in  fromJust $ BL.append (transform l) r
+         Just ps -> let (l,r) = BL.unzip (fmap f ps)
+                    in  case BL.append (transform l) r of
+                          Just ys -> ys
+                          _ -> undefined
+         _ -> xs
      itransform xs =
        case BL.split xs of
          Left _ -> xs
          Right (l,r) -> BL.joinPairs $ fmap f' $ BL.zip (itransform l) r
+
+-- | Vector version of 'leftBinaryTransform'. Unsafe, since it assumes that the input
+--   vector length is a power of two.
+leftBinaryTransformVector :: Bijection (a,a) (a,a) -> Bijection (Vector a) (Vector a)
+leftBinaryTransformVector (Bijection f f') = Bijection transform itransform
+  where
+    transform = V.modify $ \v -> do
+      let n = MV.length v
+          loop 1 = pure ()
+          loop m = do
+            let m' = div m 2
+            w <- MV.unsafeNew m
+            forM_ [0,2..m-2] $ \i -> do
+              (x,y) <- curry f <$> MV.unsafeRead v i <*> MV.unsafeRead v (i+1)
+              let i' = div i 2
+              MV.unsafeWrite w i' x
+              MV.unsafeWrite w (m' + i') y
+            forM_ [0..m-1] $ \i -> MV.unsafeRead w i >>= MV.unsafeWrite v i
+            loop m'
+      loop n
+    itransform = V.modify $ \v -> do
+      let n = MV.length v
+          loop 1 = pure ()
+          loop m = do
+            let m' = div m 2
+            loop m'
+            w <- MV.unsafeNew m
+            forM_ [0..m'-1] $ \i -> do
+              (x,y) <- curry f' <$> MV.unsafeRead v i <*> MV.unsafeRead v (i+m')
+              let i' = 2*i
+              MV.unsafeWrite w i' x
+              MV.unsafeWrite w (i'+1) y
+            forM_ [0..m-1] $ \i -> MV.unsafeRead w i >>= MV.unsafeWrite v i
+      loop n
 
 leftInverseBinaryTransformDec :: Bijection (a,a) (a,a) -> Decoded a -> Decoded a
 leftInverseBinaryTransformDec (Bijection _ f') (PartialResult xs0 d0) = PartialResult xs0 $ go xs0 d0
   where
     go acc (PartialResult xs d) = 
       let ys = case BL.split xs of
-                 Right (_,r) -> BL.joinPairs $ fmap f' $ BL.zip acc r
+                 Right (_,r) -> BL.joinPairs (fmap f' (BL.zip acc r))
                  Left _ -> xs
       in  PartialResult ys $ go ys d
     go acc (FinalResult xs rm) =
       let ys = case BL.split xs of
-                 Right (_,r) -> BL.joinPairs $ fmap f' $ BL.zip acc r
+                 Right (_,r) -> BL.joinPairs (fmap f' (BL.zip acc r))
                  Left _ -> xs
       in  FinalResult ys rm
     go _ d = d
@@ -273,7 +315,9 @@ rightBinaryTransform (Bijection f f') = Bijection transform itransform
        case BL.disjoinPairs xs of
          Nothing -> xs
          Just ps -> let (l,r) = BL.unzip $ fmap f ps
-                    in  fromJust $ BL.append l (transform r)
+                    in  case BL.append l (transform r) of
+                          Just ys -> ys
+                          _ -> undefined
      itransform xs =
        case BL.split xs of
          Left _ -> xs
