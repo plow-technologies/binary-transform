@@ -15,6 +15,7 @@ module Data.BinaryList.Algorithm.BinaryTransform (
   , leftBinaryTransformVector
   , leftInverseBinaryTransformDec
   , leftPartialInverse
+  , leftRetransformDecoded
     -- ** Right version
   , rightBinaryTransform
   , rightInverseBinaryTransformDec
@@ -28,7 +29,7 @@ import Control.Monad (forM_)
 -- Binary lists
 import Data.BinaryList (BinList)
 import qualified Data.BinaryList as BL
-import Data.BinaryList.Serialize (Decoded (..))
+import Data.BinaryList.Serialize (Decoded (..), decodedToList, toDecoded)
 -- Vectors
 import Data.Vector (Vector)
 import qualified Data.Vector as V
@@ -239,6 +240,13 @@ leftBinaryTransform (Bijection f f') = Bijection transform itransform
        case BL.split xs of
          Left _ -> xs
          Right (l,r) -> BL.joinPairs $ fmap f' $ BL.zip (itransform l) r
+
+-- | Retransform decoded data, left variant.
+leftRetransformDecoded :: Bijection (a,a) (a,a) -> Decoded a -> Decoded a
+leftRetransformDecoded _ dec@(DecodingError _ _) = dec
+leftRetransformDecoded b dec =
+  let xs = last $ decodedToList dec -- The list is not empty because dec is not a decoding error
+  in  leftInverseBinaryTransformDec b $ toDecoded $ direct (leftBinaryTransform b) xs
 
 -- | Vector version of 'leftBinaryTransform'. Unsafe, since it assumes that the input
 --   vector length is a power of two.
