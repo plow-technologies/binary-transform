@@ -11,6 +11,7 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Data.BinaryList (BinList)
 import qualified Data.BinaryList as BL
+import Data.BinaryList.Serialize (toDecoded, fromDecoded)
 import Data.BinaryList.Algorithm.BinaryTransform
 
 instance Arbitrary a => Arbitrary (BinList a) where
@@ -34,5 +35,6 @@ main :: IO ()
 main = defaultMain $ testGroup "Transform Tests"
   [ QC.testProperty "leftBinaryTransform id" $ bijectionTest (leftBinaryTransform id :: BLTransform Int)
   , QC.testProperty "leftBinaryTransformVector id" $ bijectionTest (leftBinaryTransformVector id :: VTransform Int)
+  , QC.testProperty "leftRetransformDecoded id" $ \xs -> fromDecoded (leftRetransformDecoded id (toDecoded xs)) == Right (xs :: BinList Int)
   , QC.testProperty "rightBinaryTransform id" $ bijectionTest (rightBinaryTransform id :: BLTransform Int)
     ]
