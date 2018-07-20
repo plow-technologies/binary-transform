@@ -58,7 +58,7 @@ aws s3 cp --quiet s3://plow-build-tools/plow-build-archive ~/.local/bin/plow-bui
 chmod +x ~/.local/bin/plow-build-archive
 
 
-stack --haddock build
+plow-stack --haddock build
 
 # DEPLOY SECTION
 #--------------------------------------------------------------------------------------------------------------#
@@ -71,13 +71,9 @@ in binary-transform-master)
       echo "case match binary-transform-master"
       echo "Update Plowtech Docset"
       # Make sure stack path is the same as plow-stack path
-      stackPath=$(stack path --dist-dir)
-      haddocset -t ~/docsets/Plowtech.docset add -s "$(stack path --local-pkg-db)"/*.conf
-      haddocset -t ~/docsets/Plowtech.docset add -s "$(stack path --snapshot-pkg-db)"/*.conf
-      cd ~/docsets
-      tar --exclude='.DS_Store' -czf Plowtech.tgz Plowtech.docset
-      rsync -avzPe ssh ~/docsets/Plowtech.tgz $TESTING_URL:~/docset/;;
-
+      stackPath=$(stack path --stack-yaml=global-stack.yaml --dist-dir)
+      haddocset -t ~/docsets/Plowtech.docset add -s "$(stack path --stack-yaml=global-stack.yaml --local-pkg-db)"/*.conf
+      haddocset -t ~/docsets/Plowtech.docset add -s "$(stack path --stack-yaml=global-stack.yaml --snapshot-pkg-db)"/*.conf;;
 
    *)
       printf "\n"
